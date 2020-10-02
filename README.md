@@ -42,5 +42,21 @@ Setup a wordpress site in 5 minutes guide:
 4. visit http://127.0.0.1 again, you should see the "wordpress installation" page. Using the information above to finish the setup
 (In case you want your site to go internet public, you'd better change the database root password to something secret in PHPMyAdmin, and update caddyfile ":80" to "yoursite.com")
 
+## Caddyfile WebDAV example
+The account number is jiih and the password is jiih.com
+```
+www.yourdomain.com {
+  route /webdav/* {
+    webdav {
+      prefix /webdav/
+      root *  ..\www\webdav
+    }
+  }
+  basicauth /webdav/* {
+	jiih JDJhJDEwJHY1SUpDYTZram9vMWhlTU1NNGZWVk9sTXlzV3hYYmdMWnA5Ry5mbkZvOVlEUzFBU2RERzUy
+}
+```
+Caddy configuration does not accept plaintext passwords; you MUST hash them before putting them into the configuration. The [caddy hash-password](https://caddyserver.com/docs/command-line#caddy-hash-password) command can help with this.
+
 ## (⊙﹏⊙)
-Fork from https://kknbb.com/stories/wcmp-windowscaddy2phpmysql-all-in-1-portable-package/
+Fork from [KKnBB](https://kknbb.com/stories/wcmp-windowscaddy2phpmysql-all-in-1-portable-package/)
