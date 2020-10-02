@@ -31,6 +31,7 @@ Simply run WCMP.exe And you now have a webserver+php+database environment for yo
 * Everything is using “relative path”, so the whole package is portable;
 * Database username root, empty password (mariadb default), change it as you like;
 * The phpmyadmin is the default site01. You can use it to create new databases or change root password etc. when you first time visit http://127.0.0.1
+
 3, If you replace the programs inside the sub-folders to other versions (eg. php5 replace php7, MySQL replace MariaDB) they should work fine (keep the config files if you are not sure how to setup properly)
 
 ## Exp😄
@@ -40,3 +41,6 @@ Setup a wordpress site in 5 minutes guide:
 3, download wordpress.zip, un-zip wordpress into this-tool\www\site01 folder (you can delete everything was inside there first)
 4, visit http://127.0.0.1 again, you should see the "wordpress installation" page. Using the information above to finish the setup
 (In case you want your site to go internet public, you'd better change the database root password to something secret in PHPMyAdmin, and update caddyfile ":80" to "yoursite.com")
+
+## (⊙﹏⊙)
+Fork form https://kknbb.com/stories/wcmp-windowscaddy2phpmysql-all-in-1-portable-package/
