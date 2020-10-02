@@ -43,4 +43,4 @@ Setup a wordpress site in 5 minutes guide:
 (In case you want your site to go internet public, you'd better change the database root password to something secret in PHPMyAdmin, and update caddyfile ":80" to "yoursite.com")
 
 ## (⊙﹏⊙)
-Fork form https://kknbb.com/stories/wcmp-windowscaddy2phpmysql-all-in-1-portable-package/
+Fork from https://kknbb.com/stories/wcmp-windowscaddy2phpmysql-all-in-1-portable-package/
