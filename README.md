@@ -1,12 +1,15 @@
 # WCMP
 Windows+ Caddy2+ PHP+ MySQL ALL-in-1 Portable Package
 
+![image](https://github.com/jiix/WCMP/raw/main/wcmp1.jpg)
 
 “ALL-in-One” 1-click windows webserver using Caddy2+php+MySQL (like XAMPP or WAMP) for quick test site development (or for production if you like, there are no artificial performance limits). Open-source.
 
 Unzip and it is ready in 5 seconds. Fully portable. Take the server + websites anywhere you go.
 
 (It also makes the server-moving / full-site-backup much easier, simply copy/paste/move this folder to somewhere else, run again and everything will follow)
+
+![image](https://github.com/jiix/WCMP/raw/main/wcmp2.jpg)
 
 Simply run WCMP.exe And you now have a webserver+php+database environment for your quick web application development. (full function wordpress tested)
 
