@@ -1,62 +1,54 @@
 # WCMP
-Windows+ Caddy2+ PHP+ MySQL ALL-in-1 Portable Package
+WCMP是基于Windows x64平台下的Caddy2 + PHP + MySQL便携软件包。
 
-![image](https://github.com/jiix/WCMP/raw/main/wcmp1.jpg)
+![image](https://github.com/jiix/WCMP/raw/main/screenshot.jpg)
 
-“ALL-in-One” 1-click windows webserver using Caddy2+php+MySQL (like XAMPP or WAMP) for quick test site development (or for production if you like, there are no artificial performance limits). Open-source.
+只需要下载并运行`Wcmp.exe`，你将会有一个简单易于移植的开发环境。只需要备份WCMP目录所有文件，你可以把它带到任何地方。
 
-Unzip and it is ready in 5 seconds. Fully portable. Take the server + websites anywhere you go.
-
-(It also makes the server-moving / full-site-backup much easier, simply copy/paste/move this folder to somewhere else, run again and everything will follow)
-
-![image](https://github.com/jiix/WCMP/raw/main/wcmp2.jpg)
-
-Simply run WCMP.exe And you now have a webserver+php+database environment for your quick web application development. (full function wordpress tested)
-
-## version
-* Caddy v2.2.0
+## 软件包版本
+* Caddy v2.2.1
 * PHP v7.4.11
 * MariaDB v10.4
 * SQLite v3.31.1
-* phpMyAdmin v5.0.2
+* Adminer v4.7.8
 
-## Notes:
+## 说明:
 
-1. All the included programs are the latest x64 version binaries (May 2020) fetched from the official site, all original. All credit and copyright go to their amazing developers. And I don’t reserve any rights to this little tool.
+* 所有程序均来自于官方最新x64版本。
+* 所有配置大多是默认配置。
+* php fastcgi运行于9000端口。
+* 使用相对路径以便于移植。
+* Mysql数据库默认用户名为root，密码为空，请一定要及时更改。
+* 默认网站目录是site01。你可以访问http://127.0.0.1 浏览。
 
-2. All The configurations are mostly “factory default” with little performance modification, good enough for personal blogs and medium-size projects.
-
-    * Caddyfile link to php port 9000 (default, you can not change) for php fastcgi;
-    * php.ini link to mysql port 3306(default, you can change). Some PHP extensions enabled for wordpress to run;
-    * Everything is using “relative path”, so the whole package is portable;
-    * Database username root, empty password (mariadb default), change it as you like;
-    * The phpmyadmin is the default site01. You can use it to create new databases or change root password etc. when you first time visit http://127.0.0.1
-
-3. If you replace the programs inside the sub-folders to other versions (eg. php5 replace php7, MySQL replace MariaDB) they should work fine (keep the config files if you are not sure how to setup properly)
-
-## Exp😄
-Setup a wordpress site in 5 minutes guide:
-1. run this tool, go to http://127.0.0.1 (It is PHPMyAdmin initially), log in using database username:root, password [empty]
-2. click [Databases] section -> Create database, database name type in: wordpress01, and pick {utf8mb4_unicode_ci} from dropdown, and click create.
-3. download wordpress.zip, un-zip wordpress into this-tool\www\site01 folder (you can delete everything was inside there first)
-4. visit http://127.0.0.1 again, you should see the "wordpress installation" page. Using the information above to finish the setup
-(In case you want your site to go internet public, you'd better change the database root password to something secret in PHPMyAdmin, and update caddyfile ":80" to "yoursite.com")
-
-## Caddyfile WebDAV example
-The account number is jiih and the password is jiih.com
+### 更改MySQL root密码
+登录MySQL
+```
+# mysql -u root mysql
+```
+修改MySQL root密码
+```
+mysql> set password for 'root'@'localhost' = password('MyNewPass');
+mysql> FLUSH PRIVILEGES;
+mysql> exit
+```
+### Caddyfile WebDAV演示😄
+演示账号为`jiih`，密码为`jiih.com`
 ```
 www.yourdomain.com {
-  route /webdav/* {
-    webdav {
-      prefix /webdav/
-      root *  ..\www\webdav
-    }
-  }
+root *  ..\www\webdav
+
+route {
+ 	rewrite /webdav /webdav/
+	webdav /webdav/* {
+		prefix /webdav
+	}
+	file_server
+}
   basicauth /webdav/* {
 	jiih JDJhJDEwJHY1SUpDYTZram9vMWhlTU1NNGZWVk9sTXlzV3hYYmdMWnA5Ry5mbkZvOVlEUzFBU2RERzUy
 }
 ```
-Caddy configuration does not accept plaintext passwords; you MUST hash them before putting them into the configuration. The [caddy hash-password](https://caddyserver.com/docs/command-line#caddy-hash-password) command can help with this.
-
+Caddy的配置文件不接受纯文本密码，你需要使用[caddy hash-password](https://caddyserver.com/docs/command-line#caddy-hash-password)对密码进行加密处理。
 ## (⊙﹏⊙)
 Fork from [KKnBB](https://kknbb.com/stories/wcmp-windowscaddy2phpmysql-all-in-1-portable-package/)
