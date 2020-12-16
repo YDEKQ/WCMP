@@ -29,12 +29,15 @@
 # The account number is jiih and the password is jiih.com
 
 # www.yourdomain.com {
-#  route /webdav/* {
-#    webdav {
-#      prefix /webdav/
-#      root *  ..\www\webdav
-#    }
-#  }
-#  basicauth /webdav/* {
+# root *  ..\www\webdav
+
+# route {
+# 	rewrite /webdav /webdav/
+# 	webdav /webdav/* {
+# 		prefix /webdav
+# 	}
+# 	file_server
+# }
+#   basicauth /webdav/* {
 #	jiih JDJhJDEwJHY1SUpDYTZram9vMWhlTU1NNGZWVk9sTXlzV3hYYmdMWnA5Ry5mbkZvOVlEUzFBU2RERzUy
 #}
