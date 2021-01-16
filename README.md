@@ -30,9 +30,10 @@ mysql> FLUSH PRIVILEGES;
 mysql> exit
 ```
 ### 使用Adminer
-默认访问http://127.0.0.1/adminer.php 在线管理MySQL数据库。注：许先设置MySQL密码后才可登录。
+默认访问http://127.0.0.1/adminer.php 在线管理MySQL数据库。注：需要先设置MySQL密码后才可登录。
+
 ### Caddyfile WebDAV演示😄
-演示账号为`jiih`，密码为`jiih.com`
+请编辑`WCMP\caddy\Caddyfile`进行设置。演示账号为`jiih`，密码为`jiih.com`
 ```
 www.yourdomain.com {
 root *  ..\www\webdav
