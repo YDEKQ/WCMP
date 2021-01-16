@@ -6,10 +6,10 @@ WCMP是基于Windows x64平台下的Caddy2 + PHP + MySQL便携软件包。
 只需要下载并运行`Wcmp.exe`，你将会有一个简单易于移植的开发环境。只需要备份WCMP目录所有文件，你可以把它带到任何地方。
 
 ## 软件包版本
-* Caddy v2.2.1
-* PHP v7.4.11
-* MariaDB v10.4
-* SQLite v3.31.1
+* Caddy v2.3.0
+* PHP v8.0.1
+* MariaDB v10.5.8
+* SQLite v3.33.0
 * Adminer v4.7.8
 
 ## 说明:
@@ -22,16 +22,15 @@ WCMP是基于Windows x64平台下的Caddy2 + PHP + MySQL便携软件包。
 * 默认网站目录是site01。你可以访问http://127.0.0.1 浏览。
 
 ### 更改MySQL root密码
-登录MySQL
-```
-# mysql -u root mysql
-```
+登录MySQL，先打开MySQL bin运行目录(例如`cd E:\WCMP\mysql\bin`)，再运行`mysql -u root mysql`。
 修改MySQL root密码
 ```
 mysql> set password for 'root'@'localhost' = password('MyNewPass');
 mysql> FLUSH PRIVILEGES;
 mysql> exit
 ```
+### 使用Adminer
+默认访问http://127.0.0.1/adminer.php 在线管理MySQL数据库。注：许先设置MySQL密码后才可登录。
 ### Caddyfile WebDAV演示😄
 演示账号为`jiih`，密码为`jiih.com`
 ```
