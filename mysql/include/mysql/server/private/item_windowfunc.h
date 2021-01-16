@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2016,2017 MariaDB
+   Copyright (c) 2016, 2020, MariaDB
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -118,6 +118,8 @@ public:
   Item_sum_row_number(THD *thd)
     : Item_sum_int(thd),  count(0) {}
 
+  const Type_handler *type_handler() const { return &type_handler_slonglong; }
+
   void clear()
   {
     count= 0;
@@ -178,6 +180,8 @@ protected:
 public:
 
   Item_sum_rank(THD *thd) : Item_sum_int(thd), peer_tracker(NULL) {}
+
+  const Type_handler *type_handler() const { return &type_handler_slonglong; }
 
   void clear()
   {
@@ -266,6 +270,7 @@ class Item_sum_dense_rank: public Item_sum_int
 
   Item_sum_dense_rank(THD *thd)
     : Item_sum_int(thd), dense_rank(0), first_add(true), peer_tracker(NULL) {}
+  const Type_handler *type_handler() const { return &type_handler_slonglong; }
   enum Sumfunctype sum_func () const
   {
     return DENSE_RANK_FUNC;
@@ -318,7 +323,7 @@ class Item_sum_hybrid_simple : public Item_sum_hybrid
   const Type_handler *type_handler() const
   { return Type_handler_hybrid_field_type::type_handler(); }
   void update_field();
-  Field *create_tmp_field(bool group, TABLE *table);
+  Field *create_tmp_field(MEM_ROOT *root, bool group, TABLE *table);
   void clear()
   {
     value->clear();
@@ -646,7 +651,7 @@ class Item_sum_ntile : public Item_sum_int,
 {
  public:
   Item_sum_ntile(THD* thd, Item* num_quantiles_expr) :
-    Item_sum_int(thd, num_quantiles_expr)
+    Item_sum_int(thd, num_quantiles_expr), n_old_val_(0)
   { }
 
   longlong val_int()
@@ -659,11 +664,13 @@ class Item_sum_ntile : public Item_sum_int,
 
     longlong num_quantiles= get_num_quantiles();
 
-    if (num_quantiles <= 0) {
+    if (num_quantiles <= 0 || 
+      (static_cast<ulonglong>(num_quantiles) != n_old_val_ && n_old_val_ > 0))
+    {
       my_error(ER_INVALID_NTILE_ARGUMENT, MYF(0));
       return true;
     }
-
+    n_old_val_= static_cast<ulonglong>(num_quantiles);
     null_value= false;
     ulonglong quantile_size = get_row_count() / num_quantiles;
     ulonglong extra_rows = get_row_count() - quantile_size * num_quantiles;
@@ -689,6 +696,7 @@ class Item_sum_ntile : public Item_sum_int,
   {
     current_row_count_= 0;
     partition_row_count_= 0;
+    n_old_val_= 0;
   }
 
   const char*func_name() const
@@ -697,6 +705,8 @@ class Item_sum_ntile : public Item_sum_int,
   }
 
   void update_field() {}
+
+  const Type_handler *type_handler() const { return &type_handler_slonglong; }
 
   void reset_field() { DBUG_ASSERT(0); }
 
@@ -710,6 +720,7 @@ class Item_sum_ntile : public Item_sum_int,
 
  private:
   longlong get_num_quantiles() { return args[0]->val_int(); }
+  ulonglong n_old_val_;
 };
 
 class Item_sum_percentile_disc : public Item_sum_num,
@@ -719,7 +730,7 @@ class Item_sum_percentile_disc : public Item_sum_num,
 {
 public:
   Item_sum_percentile_disc(THD *thd, Item* arg) : Item_sum_num(thd, arg),
-                           Type_handler_hybrid_field_type(&type_handler_longlong),
+                           Type_handler_hybrid_field_type(&type_handler_slonglong),
                            value(NULL), val_calculated(FALSE), first_call(TRUE),
                            prev_value(0), order_item(NULL){}
 
@@ -772,10 +783,21 @@ public:
     if (get_row_count() == 0 || get_arg(0)->is_null())
     {
       null_value= true;
-      return 0;
+      return true;
     }
     null_value= false;
     return value->get_date(thd, ltime, fuzzydate);
+  }
+
+  bool val_native(THD *thd, Native *to)
+  {
+    if (get_row_count() == 0 || get_arg(0)->is_null())
+    {
+      null_value= true;
+      return true;
+    }
+    null_value= false;
+    return value->val_native(thd, to);
   }
 
   bool add()

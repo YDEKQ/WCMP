@@ -368,13 +368,12 @@ public:
     {}
   void cleanup()
   {
-    DBUG_ENTER("Item_func_regex::cleanup");
+    DBUG_ENTER("Item_func_regexp_replace::cleanup");
     Item_str_func::cleanup();
     re.cleanup();
     DBUG_VOID_RETURN;
   }
   String *val_str(String *str);
-  bool fix_fields(THD *thd, Item **ref);
   bool fix_length_and_dec();
   const char *func_name() const { return "regexp_replace"; }
   Item *get_copy(THD *thd) { return 0;}
@@ -390,13 +389,12 @@ public:
     {}
   void cleanup()
   {
-    DBUG_ENTER("Item_func_regex::cleanup");
+    DBUG_ENTER("Item_func_regexp_substr::cleanup");
     Item_str_func::cleanup();
     re.cleanup();
     DBUG_VOID_RETURN;
   }
   String *val_str(String *str);
-  bool fix_fields(THD *thd, Item **ref);
   bool fix_length_and_dec();
   const char *func_name() const { return "regexp_substr"; }
   Item *get_copy(THD *thd) { return 0; }
@@ -1436,11 +1434,19 @@ public:
       /*
         Conversion from and to "binary" is safe.
         Conversion to Unicode is safe.
+        Conversion from an expression with the ASCII repertoire
+        to any character set that can store characters U+0000..U+007F
+        is safe:
+        - All supported multibyte character sets can store U+0000..U+007F
+        - All supported 7bit character sets can store U+0000..U+007F
+          except those marked with MY_CS_NONASCII (e.g. swe7).
         Other kind of conversions are potentially lossy.
       */
       safe= (args[0]->collation.collation == &my_charset_bin ||
              cs == &my_charset_bin ||
-             (cs->state & MY_CS_UNICODE));
+             (cs->state & MY_CS_UNICODE) ||
+             (args[0]->collation.repertoire == MY_REPERTOIRE_ASCII &&
+              (cs->mbmaxlen > 1 || !(cs->state & MY_CS_NONASCII))));
     }
   }
   bool is_json_type() { return args[0]->is_json_type(); }
@@ -1663,8 +1669,7 @@ public:
   Item_func_uuid(THD *thd): Item_str_func(thd) {}
   bool fix_length_and_dec()
   {
-    collation.set(system_charset_info,
-                  DERIVATION_COERCIBLE, MY_REPERTOIRE_ASCII);
+    collation.set(DTCollation_numeric());
     fix_char_length(MY_UUID_STRING_LENGTH);
     return FALSE;
   }
@@ -1802,8 +1807,8 @@ public:
   TABLE *table;
   Item_temptable_rowid(TABLE *table_arg);
   const Type_handler *type_handler() const { return &type_handler_string; }
-  Field *create_tmp_field(bool group, TABLE *table)
-  { return create_table_field_from_handler(table); }
+  Field *create_tmp_field(MEM_ROOT *root, bool group, TABLE *table)
+  { return create_table_field_from_handler(root, table); }
   String *val_str(String *str);
   enum Functype functype() const { return  TEMPTABLE_ROWID; }
   const char *func_name() const { return "<rowid>"; }

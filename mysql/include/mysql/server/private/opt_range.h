@@ -598,6 +598,7 @@ public:
   SEL_ARG *clone_tree(RANGE_OPT_PARAM *param);
 };
 
+extern MYSQL_PLUGIN_IMPORT SEL_ARG null_element;
 
 class SEL_ARG_IMPOSSIBLE: public SEL_ARG
 {
@@ -672,6 +673,7 @@ public:
   bool statement_should_be_aborted() const
   {
     return
+      thd->killed ||
       thd->is_fatal_error ||
       thd->is_error() ||
       alloced_sel_args > SEL_ARG::MAX_SEL_ARGS;

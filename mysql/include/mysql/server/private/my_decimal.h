@@ -195,6 +195,16 @@ public:
     return res;
   }
   longlong to_longlong(bool unsigned_flag) const;
+  /*
+    Return the value as a signed or unsigned longlong, depending on the sign.
+    - Positive values are returned as unsigned.
+    - Negative values are returned as signed.
+    This is used by bit SQL operators: | & ^ ~
+    as well as by the SQL function BIT_COUNT().
+  */
+  longlong to_xlonglong() const
+  { return to_longlong(!sign()); }
+
   // Convert to string returning decimal2string() error code
   int to_string_native(String *to, uint prec, uint dec, char filler,
                        uint mask= E_DEC_FATAL_ERROR) const;
@@ -207,15 +217,15 @@ public:
   {
     return to_string(to, 0, 0, 0);
   }
-  String *to_string_round(String *to, uint scale, my_decimal *round_buff) const
+  String *to_string_round(String *to, int scale, my_decimal *round_buff) const
   {
     (void) round_to(round_buff, scale, HALF_UP); // QQ: check result?
     return round_buff->to_string(to);
   }
-  int round_to(my_decimal *to, uint scale, decimal_round_mode mode,
+  int round_to(my_decimal *to, int scale, decimal_round_mode mode,
                int mask= E_DEC_FATAL_ERROR) const
   {
-    return check_result(mask, decimal_round(this, to, (int) scale, mode));
+    return check_result(mask, decimal_round(this, to, scale, mode));
   }
   int to_binary(uchar *bin, int prec, int scale,
                 uint mask= E_DEC_FATAL_ERROR) const;

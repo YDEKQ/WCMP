@@ -308,9 +308,7 @@ sub report_mysqlds
 
 sub start_mysqlds()
 {
-  my (@groups, $com, $tmp, $i, @options, $j, $mysqld_found, $suffix_found, $info_sent);
-
-  $suffix_found= 0;
+  my (@groups, $com, $tmp, $i, @options, $j, $mysqld_found, $info_sent);
 
   if (!$opt_no_log)
   {
@@ -349,10 +347,6 @@ sub start_mysqlds()
         $options[$j]= quote_shell_word($options[$j]);
         $tmp.= " $options[$j]";
       }
-      elsif ("--defaults-group-suffix=" eq substr($options[$j], 0, 24))
-      {
-        $suffix_found= 1;
-      }
       else
       {
 	$options[$j]= quote_shell_word($options[$j]);
@@ -367,12 +361,6 @@ sub start_mysqlds()
       print "ledir (library executable directory) should be the path to the ";
       print "wanted mysqld binary.\n\n";
       $info_sent= 1;
-    }
-
-    if (!$suffix_found)
-    {
-      $com.= " --defaults-group-suffix=";
-      $com.= substr($groups[$i],6);
     }
 
     $com.= $tmp;
@@ -747,8 +735,8 @@ password   = my_password
 [mysqld2]
 socket     = /tmp/mysql.sock2
 port       = 3307
-pid-file   = C:/Program Files/MariaDB 10.4/data2/hostname.pid2
-datadir    = C:/Program Files/MariaDB 10.4/data2
+pid-file   = C:/Program Files/MariaDB 10.5/data2/hostname.pid2
+datadir    = C:/Program Files/MariaDB 10.5/data2
 language   = C:/Program Files (x86)/MySQL/share/mysql/english
 user       = unix_user1
 
@@ -758,24 +746,24 @@ ledir      = /path/to/mysqld-binary/
 mysqladmin = /path/to/mysqladmin
 socket     = /tmp/mysql.sock3
 port       = 3308
-pid-file   = C:/Program Files/MariaDB 10.4/data3/hostname.pid3
-datadir    = C:/Program Files/MariaDB 10.4/data3
+pid-file   = C:/Program Files/MariaDB 10.5/data3/hostname.pid3
+datadir    = C:/Program Files/MariaDB 10.5/data3
 language   = C:/Program Files (x86)/MySQL/share/mysql/swedish
 user       = unix_user2
 
 [mysqld4]
 socket     = /tmp/mysql.sock4
 port       = 3309
-pid-file   = C:/Program Files/MariaDB 10.4/data4/hostname.pid4
-datadir    = C:/Program Files/MariaDB 10.4/data4
+pid-file   = C:/Program Files/MariaDB 10.5/data4/hostname.pid4
+datadir    = C:/Program Files/MariaDB 10.5/data4
 language   = C:/Program Files (x86)/MySQL/share/mysql/estonia
 user       = unix_user3
  
 [mysqld6]
 socket     = /tmp/mysql.sock6
 port       = 3311
-pid-file   = C:/Program Files/MariaDB 10.4/data6/hostname.pid6
-datadir    = C:/Program Files/MariaDB 10.4/data6
+pid-file   = C:/Program Files/MariaDB 10.5/data6/hostname.pid6
+datadir    = C:/Program Files/MariaDB 10.5/data6
 language   = C:/Program Files (x86)/MySQL/share/mysql/japanese
 user       = unix_user4
 EOF

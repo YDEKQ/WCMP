@@ -1,5 +1,5 @@
 /* Copyright (c) 2000, 2012, Oracle and/or its affiliates.
-   Copyright (c) 2012, 2017, MariaDB Corporation.
+   Copyright (c) 2012, 2020, MariaDB Corporation.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -39,7 +39,10 @@ enum enum_vio_type
 {
   VIO_CLOSED, VIO_TYPE_TCPIP, VIO_TYPE_SOCKET, VIO_TYPE_NAMEDPIPE,
   VIO_TYPE_SSL
+  /* see also vio_type_names[] */
 };
+#define FIRST_VIO_TYPE VIO_CLOSED
+#define LAST_VIO_TYPE VIO_TYPE_SSL
 
 /**
   VIO I/O events.
@@ -109,9 +112,7 @@ my_bool vio_peer_addr(Vio *vio, char *buf, uint16 *port, size_t buflen);
 /* Wait for an I/O event notification. */
 int vio_io_wait(Vio *vio, enum enum_vio_io_event event, int timeout);
 my_bool vio_is_connected(Vio *vio);
-#ifndef DBUG_OFF
 ssize_t vio_pending(Vio *vio);
-#endif
 /* Set timeout for a network operation. */
 extern int vio_timeout(Vio *vio, uint which, int timeout_sec);
 extern void vio_set_wait_callback(void (*before_wait)(void),
@@ -171,6 +172,8 @@ struct st_VioSSLFd
 int sslaccept(struct st_VioSSLFd*, Vio *, long timeout, unsigned long *errptr);
 int sslconnect(struct st_VioSSLFd*, Vio *, long timeout, unsigned long *errptr);
 
+void vio_check_ssl_init();
+
 struct st_VioSSLFd
 *new_VioSSLConnectorFd(const char *key_file, const char *cert_file,
 		       const char *ca_file,  const char *ca_path,
@@ -186,6 +189,8 @@ void free_vio_ssl_acceptor_fd(struct st_VioSSLFd *fd);
 #endif /* HAVE_OPENSSL */
 
 void vio_end(void);
+
+const char *vio_type_name(enum enum_vio_type vio_type, size_t *len);
 
 #ifdef	__cplusplus
 }
@@ -273,6 +278,7 @@ struct st_vio
 #ifdef _WIN32
   HANDLE hPipe;
   OVERLAPPED overlapped;
+  int shutdown_flag;
 #endif
 };
 #endif /* vio_violite_h_ */

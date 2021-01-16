@@ -1,4 +1,5 @@
 /* Copyright 2008-2017 Codership Oy <http://www.codership.com>
+   Copyright (c) 2020, MariaDB
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -39,6 +40,7 @@ typedef struct st_mysql_show_var SHOW_VAR;
 #include "wsrep/streaming_context.hpp"
 #include "wsrep_api.h"
 #include <vector>
+#include <map>
 #include "wsrep_server_state.h"
 
 #define WSREP_UNDEFINED_TRX_ID ULONGLONG_MAX
@@ -98,7 +100,7 @@ extern ulong       wsrep_running_applier_threads;
 extern ulong       wsrep_running_rollbacker_threads;
 extern bool        wsrep_new_cluster;
 extern bool        wsrep_gtid_mode;
-extern uint32      wsrep_gtid_domain_id;
+extern my_bool     wsrep_strict_ddl;
 
 enum enum_wsrep_reject_types {
   WSREP_REJECT_NONE,    /* nothing rejected */
@@ -109,7 +111,7 @@ enum enum_wsrep_reject_types {
 enum enum_wsrep_OSU_method {
     WSREP_OSU_TOI,
     WSREP_OSU_RSU,
-    WSREP_OSU_NONE,
+    WSREP_OSU_NONE
 };
 
 enum enum_wsrep_sync_wait {
@@ -156,7 +158,8 @@ extern const char* wsrep_provider_vendor;
 extern char*       wsrep_provider_capabilities;
 extern char*       wsrep_cluster_capabilities;
 
-int  wsrep_show_status(THD *thd, SHOW_VAR *var, char *buff);
+int  wsrep_show_status(THD *thd, SHOW_VAR *var, void *buff,
+                       system_status_var *status_var, enum_var_type scope);
 int  wsrep_show_ready(THD *thd, SHOW_VAR *var, char *buff);
 void wsrep_free_status(THD *thd);
 void wsrep_update_cluster_state_uuid(const char* str);
@@ -185,6 +188,7 @@ void wsrep_recover_sr_from_storage(THD *);
 
 // Other wsrep global variables
 extern my_bool     wsrep_inited; // whether wsrep is initialized ?
+extern bool        wsrep_service_started;
 
 extern "C" void wsrep_fire_rollbacker(THD *thd);
 extern "C" uint32 wsrep_thd_wsrep_rand(THD *thd);
@@ -245,14 +249,14 @@ extern wsrep_seqno_t wsrep_locked_seqno;
 void WSREP_LOG(void (*fun)(const char* fmt, ...), const char* fmt, ...);
 
 #define WSREP_DEBUG(...)                                                \
-    if (wsrep_debug)     WSREP_LOG(sql_print_information, ##__VA_ARGS__)
-#define WSREP_INFO(...)  WSREP_LOG(sql_print_information, ##__VA_ARGS__)
-#define WSREP_WARN(...)  WSREP_LOG(sql_print_warning,     ##__VA_ARGS__)
-#define WSREP_ERROR(...) WSREP_LOG(sql_print_error,       ##__VA_ARGS__)
+    if (wsrep_debug)     sql_print_information( "WSREP: " __VA_ARGS__)
+#define WSREP_INFO(...)  sql_print_information( "WSREP: " __VA_ARGS__)
+#define WSREP_WARN(...)  sql_print_warning(     "WSREP: " __VA_ARGS__)
+#define WSREP_ERROR(...) sql_print_error(       "WSREP: " __VA_ARGS__)
 
 #define WSREP_LOG_CONFLICT_THD(thd, role)                               \
-  WSREP_LOG(sql_print_information,                                      \
-            "%s: \n "                                                   \
+  sql_print_information(                                                \
+            "WSREP: %s: \n "                                            \
             "  THD: %lu, mode: %s, state: %s, conflict: %s, seqno: %lld\n " \
             "  SQL: %s",                                                \
             role,                                                       \
@@ -267,12 +271,12 @@ void WSREP_LOG(void (*fun)(const char* fmt, ...), const char* fmt, ...);
 #define WSREP_LOG_CONFLICT(bf_thd, victim_thd, bf_abort)                \
   if (wsrep_debug || wsrep_log_conflicts)                               \
   {                                                                     \
-    WSREP_LOG(sql_print_information, "cluster conflict due to %s for threads:", \
+    sql_print_information( "WSREP: cluster conflict due to %s for threads:", \
               (bf_abort) ? "high priority abort" : "certification failure" \
               );                                                        \
     if (bf_thd)     WSREP_LOG_CONFLICT_THD(bf_thd, "Winning thread");   \
     if (victim_thd) WSREP_LOG_CONFLICT_THD(victim_thd, "Victim thread"); \
-    WSREP_LOG(sql_print_information, "context: %s:%d", __FILE__, __LINE__); \
+    sql_print_information("WSREP: context: %s:%d", __FILE__, __LINE__); \
   }
 
 #define WSREP_PROVIDER_EXISTS                                                  \
@@ -297,6 +301,7 @@ extern mysql_mutex_t LOCK_wsrep_replaying;
 extern mysql_cond_t  COND_wsrep_replaying;
 extern mysql_mutex_t LOCK_wsrep_slave_threads;
 extern mysql_cond_t  COND_wsrep_slave_threads;
+extern mysql_mutex_t LOCK_wsrep_gtid_wait_upto;
 extern mysql_mutex_t LOCK_wsrep_cluster_config;
 extern mysql_mutex_t LOCK_wsrep_desync;
 extern mysql_mutex_t LOCK_wsrep_SR_pool;
@@ -310,9 +315,6 @@ extern mysql_cond_t  COND_wsrep_donor_monitor;
 
 extern my_bool       wsrep_emulate_bin_log;
 extern int           wsrep_to_isolation;
-#ifdef GTID_SUPPORT
-extern rpl_sidno     wsrep_sidno;
-#endif /* GTID_SUPPORT */
 extern my_bool       wsrep_preordered_opt;
 
 #ifdef HAVE_PSI_INTERFACE
@@ -331,6 +333,8 @@ extern PSI_mutex_key key_LOCK_wsrep_replaying;
 extern PSI_cond_key  key_COND_wsrep_replaying;
 extern PSI_mutex_key key_LOCK_wsrep_slave_threads;
 extern PSI_cond_key  key_COND_wsrep_slave_threads;
+extern PSI_mutex_key key_LOCK_wsrep_gtid_wait_upto;
+extern PSI_cond_key  key_COND_wsrep_gtid_wait_upto;
 extern PSI_mutex_key key_LOCK_wsrep_cluster_config;
 extern PSI_mutex_key key_LOCK_wsrep_desync;
 extern PSI_mutex_key key_LOCK_wsrep_SR_pool;
@@ -354,9 +358,15 @@ extern PSI_thread_key key_wsrep_sst_donor_monitor;
 
 struct TABLE_LIST;
 class Alter_info;
+struct HA_CREATE_INFO;
+
 int wsrep_to_isolation_begin(THD *thd, const char *db_, const char *table_,
                              const TABLE_LIST* table_list,
-                             Alter_info* alter_info= NULL);
+                             const Alter_info* alter_info= NULL,
+                             const HA_CREATE_INFO* create_info= NULL);
+
+bool wsrep_should_replicate_ddl(THD* thd, const enum legacy_db_type db_type);
+bool wsrep_should_replicate_ddl_iterate(THD* thd, const TABLE_LIST* table_list);
 
 void wsrep_to_isolation_end(THD *thd);
 
@@ -381,7 +391,129 @@ class Log_event;
 int wsrep_ignored_error_code(Log_event* ev, int error);
 int wsrep_must_ignore_error(THD* thd);
 
-bool wsrep_replicate_GTID(THD* thd);
+struct wsrep_server_gtid_t
+{
+  uint32 domain_id;
+  uint32 server_id;
+  uint64 seqno;
+};
+class Wsrep_gtid_server
+{
+public:
+  uint32 domain_id;
+  uint32 server_id;
+  Wsrep_gtid_server()
+    : m_force_signal(false)
+    , m_seqno(0)
+    , m_committed_seqno(0)
+  { }
+  void gtid(const wsrep_server_gtid_t& gtid)
+  {
+    domain_id=  gtid.domain_id;
+    server_id=  gtid.server_id;
+    m_seqno=    gtid.seqno;
+  }
+  wsrep_server_gtid_t gtid()
+  {
+    wsrep_server_gtid_t gtid;
+    gtid.domain_id= domain_id;
+    gtid.server_id= server_id;
+    gtid.seqno=     m_seqno;
+    return gtid;
+  }
+  void seqno(const uint64 seqno) { m_seqno= seqno; }
+  uint64 seqno() const { return m_seqno; }
+  uint64 seqno_committed() const { return m_committed_seqno; }
+  uint64 seqno_inc()
+  {
+    m_seqno++;
+    return m_seqno;
+  }
+  const wsrep_server_gtid_t& undefined()
+  {
+    return m_undefined;
+  }
+  int wait_gtid_upto(const uint64_t seqno, uint timeout)
+  {
+    int wait_result= 0;
+    struct timespec wait_time;
+    int ret= 0;
+    mysql_cond_t wait_cond;
+    mysql_cond_init(key_COND_wsrep_gtid_wait_upto, &wait_cond, NULL);
+    set_timespec(wait_time, timeout);
+    mysql_mutex_lock(&LOCK_wsrep_gtid_wait_upto);
+    std::multimap<uint64, mysql_cond_t*>::iterator it;
+    if (seqno > m_seqno)
+    {
+      try
+      {
+        it= m_wait_map.insert(std::make_pair(seqno, &wait_cond));
+      } 
+      catch (std::bad_alloc& e)
+      {
+         ret= ENOMEM;
+      }
+      while (!ret && (m_committed_seqno < seqno) && !m_force_signal)
+      {
+        wait_result= mysql_cond_timedwait(&wait_cond,
+                                          &LOCK_wsrep_gtid_wait_upto,
+                                          &wait_time);
+        if (wait_result == ETIMEDOUT || wait_result == ETIME)
+        {
+          ret= wait_result;
+          break;
+        }
+      }
+      if (ret != ENOMEM)
+      {
+        m_wait_map.erase(it);
+      }
+    }
+    mysql_mutex_unlock(&LOCK_wsrep_gtid_wait_upto);
+    mysql_cond_destroy(&wait_cond);
+    return ret;
+  }
+  void signal_waiters(uint64 seqno, bool signal_all)
+  {
+    mysql_mutex_lock(&LOCK_wsrep_gtid_wait_upto);
+    if (!signal_all && (m_committed_seqno >= seqno))
+    {
+      mysql_mutex_unlock(&LOCK_wsrep_gtid_wait_upto);
+      return;
+    }
+    m_force_signal= true;
+    std::multimap<uint64, mysql_cond_t*>::iterator it_end;
+    std::multimap<uint64, mysql_cond_t*>::iterator it_begin;
+    if (signal_all)
+    {
+      it_end= m_wait_map.end();
+    }
+    else
+    {
+      it_end= m_wait_map.upper_bound(seqno);
+    }
+    if (m_committed_seqno < seqno)
+    {
+      m_committed_seqno= seqno;
+    }
+    for (it_begin = m_wait_map.begin(); it_begin != it_end; ++it_begin)
+    {
+      mysql_cond_signal(it_begin->second);
+    }
+    m_force_signal= false;
+    mysql_mutex_unlock(&LOCK_wsrep_gtid_wait_upto);
+  }
+private:
+  const wsrep_server_gtid_t m_undefined= {0,0,0};
+  std::multimap<uint64, mysql_cond_t*> m_wait_map;
+  bool m_force_signal;
+  Atomic_counter<uint64_t> m_seqno;
+  Atomic_counter<uint64_t> m_committed_seqno;
+};
+extern Wsrep_gtid_server wsrep_gtid_server;
+void wsrep_init_gtid();
+bool wsrep_check_gtid_seqno(const uint32&, const uint32&, uint64&);
+bool wsrep_get_binlog_gtid_seqno(wsrep_server_gtid_t&);
 
 typedef struct wsrep_key_arr
 {
@@ -397,7 +529,7 @@ void wsrep_keys_free(wsrep_key_arr_t* key_arr);
 
 extern void
 wsrep_handle_mdl_conflict(MDL_context *requestor_ctx,
-                          MDL_ticket *ticket,
+                          const MDL_ticket *ticket,
                           const MDL_key *key);
 
 enum wsrep_thread_type {
@@ -496,6 +628,7 @@ enum wsrep::streaming_context::fragment_unit wsrep_fragment_unit(ulong unit);
 #define wsrep_thr_deinit() do {} while(0)
 #define wsrep_init_globals() do {} while(0)
 #define wsrep_create_appliers(X) do {} while(0)
+#define wsrep_should_replicate_ddl(X,Y) (1)
 
 #endif /* WITH_WSREP */
 

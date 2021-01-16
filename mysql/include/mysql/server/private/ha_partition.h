@@ -22,7 +22,7 @@
 #include "queues.h"             /* QUEUE */
 
 #define PARTITION_BYTES_IN_POS 2
-
+#define PAR_EXT ".par"
 
 /** Struct used for partition_name_hash */
 typedef struct st_part_name_def
@@ -363,7 +363,6 @@ private:
   uint m_rec_length;                     // Local copy of record length
 
   bool m_ordered;                        // Ordered/Unordered index scan
-  bool m_pkey_is_clustered;              // Is primary key clustered
   bool m_create_handler;                 // Handler used to create table
   bool m_is_sub_partitioned;             // Is subpartitioned
   bool m_ordered_scan_ongoing;
@@ -474,6 +473,10 @@ public:
   {
     return m_file;
   }
+  ha_partition *get_clone_source()
+  {
+    return m_is_clone_of;
+  }
   virtual part_id_range *get_part_spec()
   {
     return &m_part_spec;
@@ -512,7 +515,7 @@ public:
     -------------------------------------------------------------------------
     MODULE create/delete handler object
     -------------------------------------------------------------------------
-    Object create/delete methode. The normal called when a table object
+    Object create/delete method. Normally called when a table object
     exists. There is also a method to create the handler object with only
     partition information. This is used from mysql_create_table when the
     table is to be created and the engine type is deduced to be the
@@ -556,8 +559,10 @@ public:
   int create(const char *name, TABLE *form,
              HA_CREATE_INFO *create_info) override;
   int create_partitioning_metadata(const char *name,
-                                   const char *old_name, int action_flag)
+                                   const char *old_name,
+                                   chf_create_flags action_flag)
     override;
+  bool check_if_updates_are_ignored(const char *op) const override;
   void update_create_info(HA_CREATE_INFO *create_info) override;
   char *update_table_comment(const char *comment) override;
   int change_partitions(HA_CREATE_INFO *create_info, const char *path,
@@ -685,8 +690,9 @@ public:
     Bind the table/handler thread to track table i/o.
   */
   virtual void unbind_psi();
-  virtual void rebind_psi();
+  virtual int rebind();
 #endif
+  int discover_check_version() override;
   /*
     -------------------------------------------------------------------------
     MODULE change record
@@ -826,7 +832,7 @@ public:
 
   /**
     @breif
-    Positions an index cursor to the index specified in the hanlde. Fetches the
+    Positions an index cursor to the index specified in the handle. Fetches the
     row if available. If the key value is null, begin at first key of the
     index.
   */
@@ -1049,8 +1055,10 @@ public:
     For the given range how many records are estimated to be in this range.
     Used by optimiser to calculate cost of using a particular index.
   */
-  ha_rows records_in_range(uint inx, key_range * min_key, key_range * max_key)
-    override;
+  ha_rows records_in_range(uint inx,
+                           const key_range * min_key,
+                           const key_range * max_key,
+                           page_range *pages) override;
 
   /*
     Upper bound of number records returned in scan is sum of all
@@ -1124,7 +1132,7 @@ public:
 
     HA_REC_NOT_IN_SEQ:
     This flag is set for handlers that cannot guarantee that the rows are
-    returned accroding to incremental positions (0, 1, 2, 3...).
+    returned according to incremental positions (0, 1, 2, 3...).
     This also means that rnd_next() should return HA_ERR_RECORD_DELETED
     if it finds a deleted row.
     (MyISAM (not fixed length row), HEAP, InnoDB)
@@ -1335,12 +1343,6 @@ public:
   uint min_record_length(uint options) const override;
 
   /*
-    Primary key is clustered can only be true if all underlying handlers have
-    this feature.
-  */
-  bool primary_key_is_clustered() override { return m_pkey_is_clustered; }
-
-  /*
     -------------------------------------------------------------------------
     MODULE compare records
     -------------------------------------------------------------------------
@@ -1508,12 +1510,10 @@ public:
                                      Alter_inplace_info *ha_alter_info)
       override;
     bool inplace_alter_table(TABLE *altered_table,
-                             Alter_inplace_info *ha_alter_info) override;
+                            Alter_inplace_info *ha_alter_info) override;
     bool commit_inplace_alter_table(TABLE *altered_table,
                                     Alter_inplace_info *ha_alter_info,
                                     bool commit) override;
-    void notify_table_changed() override;
-
   /*
     -------------------------------------------------------------------------
     MODULE tablespace support
@@ -1552,7 +1552,6 @@ public:
   */
     const COND *cond_push(const COND *cond) override;
     void cond_pop() override;
-    void clear_top_table_fields() override;
     int info_push(uint info_type, void *info) override;
 
     private:
@@ -1620,9 +1619,8 @@ public:
     return h;
   }
 
-  ha_rows part_records(void *_part_elem)
+  ha_rows part_records(partition_element *part_elem)
   {
-    partition_element *part_elem= reinterpret_cast<partition_element *>(_part_elem);
     DBUG_ASSERT(m_part_info);
     uint32 sub_factor= m_part_info->num_subparts ? m_part_info->num_subparts : 1;
     uint32 part_id= part_elem->id * sub_factor;

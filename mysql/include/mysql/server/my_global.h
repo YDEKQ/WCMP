@@ -796,6 +796,8 @@ inline unsigned long long my_double2ulonglong(double d)
 #define LONGLONG_MIN	((long long) 0x8000000000000000LL)
 #define LONGLONG_MAX	((long long) 0x7FFFFFFFFFFFFFFFLL)
 #endif
+/* Max length needed for a buffer to hold a longlong or ulonglong + end \0 */
+#define LONGLONG_BUFFER_SIZE 21
 
 #if defined(HAVE_LONG_LONG) && !defined(ULONGLONG_MAX)
 /* First check for ANSI C99 definition: */
@@ -1069,8 +1071,8 @@ typedef ulong		myf;	/* Type of MyFlags in my_funcs */
 
 #ifdef HAVE_CHARSET_utf8mb4
 #define MYSQL_UNIVERSAL_CLIENT_CHARSET "utf8mb4"
-#elif defined(HAVE_CHARSET_utf8)
-#define MYSQL_UNIVERSAL_CLIENT_CHARSET "utf8"
+#elif defined(HAVE_CHARSET_utf8mb3)
+#define MYSQL_UNIVERSAL_CLIENT_CHARSET "utf8mb3"
 #else
 #define MYSQL_UNIVERSAL_CLIENT_CHARSET MYSQL_DEFAULT_CHARSET_NAME
 #endif
